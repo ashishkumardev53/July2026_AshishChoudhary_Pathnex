@@ -1,0 +1,106 @@
+***** This is L1 Code Practice Day - 1 ******
+
+--This is Ansible Task Code YAML
+
+- name: Install Nginx on Pathnex server 
+  hosts: all 
+  become: yes 
+
+  tasks: 
+    - name: Install nginx 
+      yum: 
+        name: nginx 
+        state: present 
+
+
+--This is Terraform Task — Create EC2
+
+provider "aws" {
+    region = "us-east-1"
+}
+
+resource "aws_instance" "PathnexEC2" {
+    ami         = "ami-0abcd1234"
+    instance_type = "c5.xlarge"
+
+    tag = {
+        Name = "Pathnex-EC2"
+    }
+}
+
+--This is Kubernetes Task — Create Nginx Pod
+
+apiVersion: v1 
+kind: pod
+metadata: 
+   name: pathnex-pod 
+spec: 
+   containers: 
+      - name: web 
+        image: nginx:latest 
+        ports: 
+          - containerPort: 80
+
+--This is Shell Script — Print Date & Hostname Task
+
+#!/bin/bash
+echo "Date: $(date)"
+echo "Hostname: $(hostname)"
+
+#Git Integration 
+--This is  Jenkins Pipeline — Checkout Git Task
+
+pipeline {
+    agent any 
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Pathnex/sample-java-app.git'
+            }
+        }
+        stage('List Files') {
+            steps {
+                sh 'ls -la'
+            }
+        }
+    }
+}
+
+--This is GitLab CI — Checkout Git Task 
+
+stages: 
+   - checkout 
+
+git-checkout: 
+  stage: checkout 
+  script: 
+     - git clone https://github.com/pathnex/sample-java-app.git 
+     - cd sample-java-app 
+     - ls -la 
+
+
+***** This is L2 Code Practice Day - 1 ******
+
+--This is Ansible Task — Install Nginx on Pathnex Server 
+
+```yaml 
+
+- name: Install Nginx on Pathnex server 
+  hosts: all 
+  become: yes 
+
+  tasks: 
+    - name: Install nginx 
+      yum: 
+        name: nginx 
+        state: present 
+
+--This is Docker Task (Installation & Container)
+
+docker --version 
+docker run ubuntu echo "Hello Pathnex"
+
+--This is Docker file Task 
+
+FROM ubuntu:22.02 
+CMD ["echo", "Hello Pathnex"]
