@@ -1,0 +1,204 @@
+***** This is L1 Code Practice Day - 4 ******
+
+--This is Ansible - Install Multiple Package 
+
+- name: Install packages for Pathnex 
+  hosts: all 
+  become: yes 
+
+  tasks: 
+    - name: Install tools 
+      yum: 
+        name: 
+          - git 
+          - wget 
+        state: present 
+
+--This is Terraform - EC2 with key Pair (c6i.8xlarge)
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_key_pair" "PathnexKey" {
+  key_name      = "Pathnexkey"
+  public_key    = "ssh-rsa AAAA...."
+}
+
+resource "aws_instance" "pathnexEC2" {
+  ami              = "ami-0abcd1234abcd1234"
+  instance_type    = "c6i8xlarge"
+  key_name         = aws_key_pair.PathnexKey.key_name 
+
+  tags = {
+    Name = "Pathnex-EC2"
+  }
+}
+
+--This is Kubernetes -Create clusterIP Service 
+
+apiVersion: v1 
+kind: Service 
+metadata:
+  name: pathnex-service 
+spec: 
+  selector: 
+    app: pathnex-app 
+  ports: 
+    - port: 80
+      targetPort: 80   
+
+--This is Jenkins Pipeline — Parallel Build & Test 
+
+pipeline {
+   agent any 
+   stages {
+       stage('Parallel Tasks') {
+          parallel {
+            stage('Build') {
+              steps {
+                sh 'mvn clean compile'
+              }
+            }
+            stage('Test') {
+              steps {
+                sh 'mvn test'
+              }
+            }
+          }
+       }
+   }
+}
+
+--This is Gitlab CI -Parallel Jobs 
+
+stages: 
+  - build-test 
+
+maven-build: 
+  stage: build-test 
+  image: maven:3.8.1-jdk-17 
+  script: 
+    - git clone https://github.com/Pathnex/sample-java-app.git
+    - cd sample-java 
+    - mvn clean compile 
+  parallel: 1
+
+maven-test: 
+  stage: build-test 
+  image: maven:3.8.1-jdk-17 
+  script: 
+    - cd sample-java-app 
+    - mvn test 
+  parallel: 1 
+
+
+
+***** This is L2 Code Practice Day - 4 ******
+
+
+--This is Jenkinsfile — Basic CI Pipeline code 
+
+pipeline {
+  agent any 
+  stages {
+    stages {
+      stage('Build') {
+        steps {
+          echo 'Building project'
+        }
+      }
+      stage('Test') {
+        steps {
+          echo 'Running tests'
+        }
+      }
+      stage('Deploy') {
+        steps {
+          echo 'Deploying application'
+        }
+      }
+    }
+  }
+}
+
+--This is GitLab CI/CD — Basic Pipeline code 
+
+stages: 
+  - build
+  - test 
+  - deploy 
+
+build: 
+  stage: build 
+  script: 
+   - echo "Building project"
+
+test: 
+  stage: test 
+  script: 
+   - echo "Running tests"
+
+deploy: 
+  stage: deploy 
+  script: 
+   -echo "Deploying application"
+
+
+--This is Ansible — Install and Configure Nginx code 
+
+- name: Install and configure Nginx 
+  hosts: all 
+  become: yes 
+  tasks: 
+    - name: Install nginx 
+      yum: 
+        name: nginx 
+        state: present 
+    - name: Configure nginx 
+      template: 
+        src: nginx.conf.j2 
+        dest: /etc/nginx/nginx.conf
+    - name: Start nginx service 
+      service: 
+        name: nginx 
+        state: started 
+        enabled: yes 
+
+
+--This is  Terraform — EC2 with Security Group code 
+
+resource "aws_security_group" "example" {
+  name               = "example_security_group"
+  description        = "Allow SSH and HTTP"
+  ingress {
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"] 
+  }
+}
+
+--This is Docker Apache Container 
+
+FROM ubuntu:22.04 
+RUN apt update && apt install apache2 -yes
+Run echo "Hello Pathnex" > /var/www/html/index.html
+CMD ["apachectl", "-D" "FOREGROUND"] 
+
+--This is Bash Real Path 
+/var/www/html
