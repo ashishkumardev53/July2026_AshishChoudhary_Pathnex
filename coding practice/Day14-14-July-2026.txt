@@ -1,0 +1,357 @@
+***** This is L1 Code Practice Day - 14 ******
+
+--This is Terraform (VPC, Subnet, Internet gateway, Route table, EC2 )
+
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# VPC
+
+resource "aws_vpc" "pathnex_vpc" {
+  cidr_block = "10.0.0.0/16"
+
+  tags = {
+    Name = "Pathnex-VPC
+  }
+}
+
+# Public Subnet
+
+resource "aws_subnet" "public_subnet" {
+  vpc_id               = aws_vpc.pathnex_vpc.id 
+  cidr_block           = "10.0.1.0/24"
+  availability         = "ap-south-la"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "Public-Subnet"
+  }
+}
+
+# Internet Gateway 
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.pathnex_vpc.id
+
+  tags = {
+    Name = "Pathnex-IGW"
+  }
+}
+
+# Route Table 
+
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.pathnex_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "Public-RT"
+  }
+} 
+
+# Route Table Association 
+
+resource "aws_route_table_association" "public_assoc" {
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+# Security Group 
+
+resource "aws_security_group" "ec2_sg" {
+  name   = "Pathnex-SG"
+  vpc_id = aws_vpc.pathnex_vpc.id
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "Pathnex-SG"
+  }
+}
+
+# EC2 Instance
+
+resource "aws_instance" "pathnex_ec2" {
+  ami                    = "ami-0f58b397bc5c1f2e8"   # Amazon Linux 2 (ap-south-1)
+  instance_type          = "c5.xlarge"
+  subnet_id              = aws_subnet.public_subnet.id
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+
+  tags = {
+    Name = "Pathnex-EC2"
+  }
+}
+
+--This is Ansible code 
+
+- name: Install Nginx and Deploy HTML File
+  hosts: pathnex
+  become: yes
+
+  tasks:
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Start and Enable Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+- name: Install Nginx and Deploy HTML File
+  hosts: pathnex 
+  become: yes
+
+  tasks:
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Start and Enable Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+
+--This is Kubernetes — Create Deployment + Service
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pathnex-nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pathnex-nginx
+  template:
+    metadata:
+      labels:
+        app: pathnex-nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: pathnex-nginx-service
+spec:
+  type: NodePort
+  selector:
+    app: pathnex-nginx
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30080
+
+--This is  Shell — Print CPU, Memory, Disk
+
+#!/bin/bash
+
+echo "System Resource Usage"
+
+echo "CPU Usage:"
+top -bn1 | grep "Cpu(s)"
+
+echo
+
+echo "Memory Usage:"
+free -h
+
+echo
+
+echo "Disk Usage:"
+df -h
+
+--This is Jenkins Pipeline — Scheduled Build
+
+
+pipeline {
+    agent any
+    environment {
+        INSTITUTE_NAME = "Pathnex"
+    }
+    triggers {
+        cron('H 2 * * *') // every day at 2 AM
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/Pathnex/sample-java-app.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+    }
+}
+
+--This is GitLab CI — Scheduled Pipeline
+
+stages:
+  - build
+
+build:
+  stage: build
+  image: maven:3.8.1-jdk-17
+  script:
+    - git clone https://github.com/Pathnex/sample-java-app.git
+    - cd sample-java-app
+    - mvn clean package
+
+
+***** This is L2 Code Practice Day - 14 ******
+
+--This is Ansible — Setup Nginx with Reverse Proxy
+
+- name: Setup Nginx with Reverse Proxy
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install nginx
+      yum:
+        name: nginx
+        state: present
+    - name: Configure nginx as reverse proxy
+      template:
+        src: reverse-proxy.conf.j2
+        dest: /etc/nginx/conf.d/reverse-proxy.conf
+    - name: Restart nginx service
+      service:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+--This is Terraform — Create S3 Bucket with Versioning and Logging
+
+resource "aws_s3_bucket" "pathnex_bucket" {
+  bucket = "pathnex-bucket"
+  versioning {
+    enabled = true
+  }
+
+  logging {
+    target_bucket = "pathnex-log-bucket"
+    target_prefix = "logs/"
+  }
+} 
+
+--This is Kubernetes — Ingress with Nginx Controller
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pathnex-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: pathnex.local
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: pathnex-service
+              port:
+                number: 80
+
+--This is Jenkinsfile — Build, Test, and Deploy with Stages
+
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Building Docker image...'
+                docker.build('pathnex-web-app')
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    sh 'kubectl apply -f kubernetes/deployment.yaml'
+                }
+            }
+        }
+    }
+}
+
+--This is  GitLab CI/CD — Multi-Stage Deployment with Helm
+
+stages:
+  - build
+  - push
+  - deploy
+
+build:
+  stage: build
+  script:
+    - docker build -t pathnex-web-app .
+
+push:
+  stage: push
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+    - docker push pathnex-web-app
+
+deploy:
+  stage: deploy
+  script:
+    - helm upgrade --install pathnex-nginx pathnex/nginx-ingress
+
+--This is Docker
+
+# CMD vs ENTRYPOINT
+FROM ubuntu
+ENTRYPOINT ["echo"]
+CMD ["Hello Pathnex"]
+
