@@ -1,6 +1,6 @@
 ***** This is L1 Code Practice Day - 22 ******
 
---This is Ansible — Use Handler on Config Change
+--This is Ansible — Use Handler on Config Changes
 
 - name: Configure Nginx for Pathnex
   hosts: all
