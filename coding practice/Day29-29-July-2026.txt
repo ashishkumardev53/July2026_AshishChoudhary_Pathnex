@@ -1,0 +1,462 @@
+***** This is L1 Code Practice Day - 29 ******
+
+--This is Terraform code
+
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# Variables
+
+variable "instance_type" {
+  default = "c5.xlarge"
+}
+
+variable "key_name" {
+  default = "devops-key"
+}
+
+# Get Default VPC
+
+data "aws_vpc" "default" {
+  default = true
+}
+
+# Get Default Subnet
+
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
+# Latest Amazon Linux 2 AMI
+
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+
+  owners = ["137112412989"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+}
+
+# Key Pair
+
+resource "aws_key_pair" "key" {
+  key_name   = var.key_name
+  public_key = file("~/.ssh/id_rsa.pub")
+}
+
+# Security Group
+
+resource "aws_security_group" "web_sg" {
+  name        = "terraform-web-sg"
+  description = "Allow SSH and HTTP"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "Terraform-SG"
+  }
+}
+
+# EC2 Instance
+
+resource "aws_instance" "web" {
+
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = var.instance_type
+  subnet_id              = data.aws_subnets.default.ids[0]
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
+  key_name               = aws_key_pair.key.key_name
+
+  tags = {
+    Name = "Terraform-EC2"
+  }
+}
+
+# EBS Volume
+
+resource "aws_ebs_volume" "extra_volume" {
+
+  availability_zone = aws_instance.web.availability_zone
+  size              = 30
+  type              = "gp3"
+
+  tags = {
+    Name = "Terraform-EBS"
+  }
+}
+
+# Attach EBS
+
+resource "aws_volume_attachment" "attach" {
+
+  device_name = "/dev/sdf"
+  volume_id   = aws_ebs_volume.extra_volume.id
+  instance_id = aws_instance.web.id
+}
+
+# Output Public IP
+
+output "public_ip" {
+  value = aws_instance.web.public_ip
+}
+
+output "instance_id" {
+  value = aws_instance.web.id
+}
+
+--This is Ansible code
+
+---
+- name: Install and Configure Nginx
+  hosts: web
+  become: yes
+
+  tasks:
+
+    - name: Install Nginx
+      package:
+        name: nginx
+        state: present
+
+    - name: Copy HTML page
+      copy:
+        src: index.html
+        dest: /usr/share/nginx/html/index.html
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Start Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+--This is k8s code 
+
+# Persistent Volume Claim (PVC)
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+
+# Deployment
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: nginx
+
+  template:
+    metadata:
+      labels:
+        app: nginx
+
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+
+        ports:
+        - containerPort: 80
+
+        volumeMounts:
+        - name: nginx-storage
+          mountPath: /usr/share/nginx/html
+
+      volumes:
+      - name: nginx-storage
+        persistentVolumeClaim:
+          claimName: nginx-pvc
+
+---
+
+# NodePort Service
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+
+spec:
+  type: NodePort
+
+  selector:
+    app: nginx
+
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+
+--This is Bash-Script code
+
+#!/bin/bash
+
+echo "System Health Check Report"
+
+# CPU Usage
+
+echo "1. CPU Usage:"
+top -bn1 | grep "Cpu(s)"
+
+# Memory Usage
+
+echo "2. Memory Usage:"
+free -h
+
+# Disk Usage
+
+echo "3. Disk Usage:"
+df -h
+
+# IP Address
+
+echo "4. IP Address:"
+hostname -I
+
+# Top Process by CPU
+
+echo "5. Top Process (Highest CPU Usage):"
+ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu | head -n 6
+
+echo "Health Check Completed"
+
+--This is Jenkins Pipeline 
+
+pipeline {
+    agent any
+
+    environment {
+        INSTITUTE_NAME = "Pathnex"
+        TEAM = "DevOps"
+        ENV = "prod"
+        PROJECT = "Pathnex-Training"
+    }
+
+    stages {
+
+        stage('Terraform') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform init'
+                    sh 'terraform validate'
+                    sh 'terraform plan'
+                    sh 'terraform apply -auto-approve'
+                }
+            }
+        }
+
+        stage('Ansible') {
+            steps {
+                dir('ansible') {
+                    sh 'ansible-playbook -i inventory playbook.yml'
+                }
+            }
+        }
+
+        stage('Kubernetes') {
+            steps {
+                dir('kubernetes') {
+                    sh 'kubectl apply -f k8s.yaml'
+                }
+            }
+        }
+
+        stage('Monitoring') {
+            steps {
+                sh '''
+                top -bn1 | grep "Cpu(s)"
+                free -h
+                df -h
+                hostname -I
+                ps -eo pid,cmd,%cpu --sort=-%cpu | head -5
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline Successful"
+        }
+
+        failure {
+            echo "Pipeline Failed"
+        }
+    }
+}
+
+--This is Gitlab code 
+
+stages:
+  - infrastructure
+  - app_deployment
+  - monitoring_checks
+
+variables:
+  INSTITUTE_NAME: "Pathnex"
+  TEAM: "DevOps"
+  ENV: "prod"
+  PROJECT: "Pathnex-Training"
+
+infrastructure:
+  stage: infrastructure
+  script:
+    - cd terraform
+    - terraform init
+    - terraform validate
+    - terraform plan
+    - terraform apply -auto-approve
+
+app_deployment:
+  stage: app_deployment
+  script:
+    - cd ansible
+    - ansible-playbook -i inventory playbook.yml
+    - cd ../kubernetes
+    - kubectl apply -f k8s.yaml
+
+monitoring_checks:
+  stage: monitoring_checks
+  script:
+    - top -bn1 | grep "Cpu(s)"
+    - free -h
+    - df -h
+    - hostname -I
+    - ps -eo pid,cmd,%cpu --sort=-%cpu | head -5 
+
+***** This is L2 Code Practice Day - 29 ******
+
+--This is  Ansible — Complete Deployment Setup  
+
+- name: Complete Deployment Setup
+  hosts: all
+  become: yes
+  tasks:
+    - name: Deploy Nginx, MySQL, and Redis with Docker
+      command: docker-compose -f /path/to/docker-compose.yml up -d
+
+--This is Terraform — Provisioning Multi-Tier Application with VPC and Security  
+
+resource "aws_vpc" "pathnex_vpc" {
+  cidr_block = "10.0.0.0/16"
+}
+
+resource "aws_instance" "pathnex_app" {
+  ami           = "ami-0abcd1234abcd1234"
+  instance_type = "t2.medium"
+  subnet_id     = aws_subnet.pathnex_subnet.id
+  security_groups = [aws_security_group.pathnex_sg.name]
+}
+
+--This is Kubernetes — Deploy Full Application Stack 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pathnex-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pathnex-app
+  template:
+    metadata:
+      labels:
+        app: pathnex-app
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pathnex-service
+spec:
+  selector:
+    app: pathnex-app
+  ports:
+    - port: 80
+      targetPort: 80
+
+--This is Docker 
+
+# Docker Security & Cleanup
+FROM nginx
+RUN useradd pathnexuser
+USER pathnexuser
+
+# Commands
+docker container prune
+docker image prune
+docker volume prune
+docker network prune
+docker system prune -a
+
+
+# Final Docker Project
+version: '3'
+services:
+  frontend:
+    image: nginx
+    container_name: pathnex-frontend
+    ports:
+      - "80:80"
+  backend:
+    build: ./backend
+    container_name: pathnex-backend
+    ports:
+      - "5000:5000"
+  database:
+    image: mysql:8
+    container_name: pathnex-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
