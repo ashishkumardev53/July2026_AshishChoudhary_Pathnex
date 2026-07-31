@@ -1,0 +1,142 @@
+***** This is Code Practice Day - 31 ******
+
+--This is Datadog Ansible
+
+datadog_api_key: "23344249dsjuiasfqw12441344655531e3"   
+datadog_site: "us5.datadoghq.com"                     
+
+# Tags
+datadog_tags:
+  - "env:production"
+  - "team:devops"
+  - "project:k8s-cluster"
+  - "Batch:March2026"
+  - "Study:Free"
+  - "Organisation:Pathnex"
+
+# Enable logs
+datadog_logs_enabled: true
+
+# Enable APM (tracing)
+datadog_apm_enabled: true
+
+# Process monitoring
+datadog_process_agent_enabled: true
+
+# Enable network monitoring
+datadog_system_probe_enabled: true
+datadog_network_monitoring_enabled: true
+
+# Runtime security (optional but powerful)
+datadog_runtime_security_config_enabled: true
+
+# Collect system logs example
+datadog_logs_config:
+  - type: file
+    path: /var/log/syslog
+    service: system
+    source: syslog
+
+# Custom host name (optional)
+datadog_hostname: "{{ inventory_hostname }}"
+
+# Enable live process collection
+datadog_process_config:
+  enabled: "true"
+
+- name: Install Datadog Agent
+  hosts: datadog_agents
+  become: yes
+
+  vars:
+    ansible_user: ec2-user
+    ansible_ssh_private_key_file: "Pathnex-ec2-key.pem"  
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+  roles:
+    - datadog.dd.agent
+
+
+[datadog_agents]
+server1 ansible_host=7.111.157.434  
+server2 ansible_host=43.234.215.625 
+server3 ansible_host=43.243.7.657  
+
+--This is Datadog Terraform 
+
+resource "datadog_monitor" "high_cpu" {
+  name              = "High CPU Usage"
+  type              = "metric alert"
+  query             = "avg(last_5m):avg:system.cpu.user{env:${var.env}} > 80"
+  message           = "CPU is high on {{host.name}}"
+}
+
+terraform {
+  required_providers {
+    datadog = {
+      source = "DataDog/datadog"
+    }
+  }
+  required_version = ">= 1.1.5"
+}
+
+# Configure the Datadog provider
+provider "datadog" {
+  
+  api_key = var.datadog_api_key
+  app_key = var.datadog_app_key
+  api_url = "https://api.us5.datadoghq.com/"     
+}
+
+resource "datadog_monitor" "low_memory" {
+  name = "Low Memory"
+  type = "metric alert"
+
+  query = "avg(last_5m):avg:system.mem.pct_usable{env:${var.env}} < 0.2"
+
+  message = <<EOM
+Memory is critically low on host {{host.name}}.
+Check running processes and cleanup memory usage.
+EOM
+
+  tags = ["env:${var.env}", "team:devops"]
+
+}
+
+variable "datadog_api_key" {
+  default   = "558e67d53989jksdfjqfhsjadssadwe96bd" 
+  type      = string
+#  sensitive = true
+}
+variable "datadog_app_key" {
+  default   = "ddapp_19K3awrejawrheriouskz51toHIV" 
+ # sensitive = true
+}
+
+variable "env" {
+  description = "Environment tag for monitors"
+  type        = string
+  default     = "prod"
+}
+
+# terraform ec2 
+
+provider "aws" {
+  region = "ap-south-1" # Change to your preferred region
+}
+
+resource "aws_instance" "pathnex" {
+  ami                    = "ami-0fgedare42608c138" 
+  instance_type          = "t3.micro"               
+  count                  = 3                        
+  key_name               = "Pathnex-ec2-key"
+  subnet_id              = "subnet-060e30dffff857" 
+  vpc_security_group_ids = ["sg-006c76csdfawerf09"]   
+  tags = {
+    Name = "pathnex-ec2-1"
+  }
+}
+
+output "ec2_public_ips" {
+  value = aws_instance.pathnex[*].public_ip
+}
