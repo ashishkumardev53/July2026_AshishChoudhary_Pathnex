@@ -1,0 +1,382 @@
+***** This is L1 Code Practice Day - 30 ******
+
+--This is Ansible code 
+
+---
+- name: Create User and Configure SSH
+  hosts: all
+  become: yes
+
+  tasks:
+
+    - name: Create User
+      user:
+        name: pathnex-admin
+        shell: /bin/bash
+        state: present
+
+    - name: Create .ssh Directory
+      file:
+        path: /home/pathnex-admin/.ssh
+        state: directory
+        owner: pathnex-admin
+        group: pathnex-admin
+        mode: '0700'
+
+    - name: Add SSH Key
+      copy:
+        dest: /home/pathnex-admin/.ssh/authorized_keys
+        content: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCexamplekey"
+        owner: pathnex-admin
+        group: pathnex-admin
+        mode: '0600'
+
+--This is Terraform code 
+
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_instance" "ec2" {
+  ami           = "ami-0f5ee92e2d63afc18"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name    = "Pathnex-Server"
+    Project = "Pathnex-Training"
+  }
+}
+
+output "public_ip" {
+  value = aws_instance.ec2.public_ip
+}
+
+--This is Kubernetes 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: nginx
+
+  template:
+    metadata:
+      labels:
+        app: nginx
+
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: nginx
+
+  ports:
+    - port: 80
+      targetPort: 80
+
+--This is Shell Script  
+
+#!/bin/bash
+
+echo "1. IP"
+echo "2. Disk"
+echo "3. Memory"
+
+read -p "Enter Choice: " ch
+
+case $ch in
+1)
+hostname -I
+;;
+
+2)
+df -h
+;;
+
+3)
+free -h
+;;
+
+*)
+echo "Invalid Choice"
+;;
+esac
+
+--This is Jenkins code  
+
+pipeline {
+    agent any
+
+    environment {
+        INSTITUTE_NAME = "Pathnex"
+        TEAM = "DevOps"
+        ENV = "prod"
+        PROJECT = "Pathnex-Training"
+    }
+
+    stages {
+
+        stage('Infrastructure') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform init'
+                    sh 'terraform apply -auto-approve'
+                }
+            }
+        }
+
+        stage('App Deployment') {
+            steps {
+                dir('ansible') {
+                    sh 'ansible-playbook -i inventory playbook.yml'
+                }
+
+                dir('kubernetes') {
+                    sh 'kubectl apply -f k8s.yaml'
+                }
+            }
+        }
+
+        stage('Monitoring Checks') {
+            steps {
+                sh 'bash menu.sh'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline Success'
+        }
+
+        failure {
+            echo 'Pipeline Failed'
+        }
+    }
+}
+
+--This is Gitlab code 
+
+stages:
+  - infrastructure
+  - app_deployment
+  - monitoring_checks
+
+variables:
+  INSTITUTE_NAME: "Pathnex"
+  TEAM: "DevOps"
+  ENV: "prod"
+  PROJECT: "Pathnex-Training"
+
+infrastructure:
+  stage: infrastructure
+  script:
+    - cd terraform
+    - terraform init
+    - terraform apply -auto-approve
+
+app_deployment:
+  stage: app_deployment
+  script:
+    - cd ansible
+    - ansible-playbook -i inventory playbook.yml
+    - cd ../kubernetes
+    - kubectl apply -f k8s.yaml
+
+monitoring_checks:
+  stage: monitoring_checks
+  script:
+    - bash menu.sh
+
+***** This is L2 Code Practice Day - 30 ******
+
+--This is Terraform 
+
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_instance" "web" {
+  ami           = "ami-0f5ee92e2d63afc18"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "Pathnex-Server"
+  }
+}
+
+output "public_ip" {
+  value = aws_instance.web.public_ip
+}
+
+--This is Kubernetes 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: nginx
+
+  template:
+    metadata:
+      labels:
+        app: nginx
+
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+
+--This is Kubernetes Service 
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+
+spec:
+  type: LoadBalancer
+
+  selector:
+    app: nginx
+
+  ports:
+  - port: 80
+    targetPort: 80
+
+--This is Helm 
+
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: latest
+
+service:
+  type: LoadBalancer
+  port: 80
+
+--This is Jenkins 
+
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Terraform') {
+            steps {
+                sh 'cd terraform && terraform init'
+                sh 'cd terraform && terraform apply -auto-approve'
+            }
+        }
+
+        stage('Kubernetes') {
+            steps {
+                sh 'kubectl apply -f deployment.yaml'
+                sh 'kubectl apply -f service.yaml'
+            }
+        }
+
+        stage('Helm') {
+            steps {
+                sh 'helm install nginx-app .'
+            }
+        }
+    }
+}
+
+--This is GitLab 
+
+stages:
+  - terraform
+  - kubernetes
+  - helm
+
+terraform:
+  stage: terraform
+  script:
+    - cd terraform
+    - terraform init
+    - terraform apply -auto-approve
+
+kubernetes:
+  stage: kubernetes
+  script:
+    - kubectl apply -f deployment.yaml
+    - kubectl apply -f service.yaml
+
+helm:
+  stage: helm
+  script:
+    - helm install nginx-app .
+
+--This is Network Policy (k8s) 
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nginx
+
+spec:
+  podSelector:
+    matchLabels:
+      app: nginx
+
+  policyTypes:
+  - Ingress
+
+  ingress:
+  - {}
+
+--This is Horizontal Pod Autoscaler (k8s)
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nginx-hpa
+
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx
+
+  minReplicas: 2
+  maxReplicas: 5
+
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
